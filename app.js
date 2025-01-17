@@ -7,7 +7,13 @@ const transcribeRoutes = require("./src/routes/transcribe");
 
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: "https://capture-ai.netlify.app", // Replace with your Netlify URL
+    methods: ["GET", "POST"], // Limit allowed HTTP methods
+    credentials: true, // Allow cookies if needed
+  })
+);
 app.use(express.json()); // Parse JSON requests
 
 // Use the transcription route
