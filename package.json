@@ -1,6 +1,26 @@
 {
   "dependencies": {
+    "cohere-ai": "^7.15.4",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "node": "^22.13.0"
+  },
+  "name": "capture-ai-backend",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "eslint": "^9.18.0",
+    "nodemon": "^3.1.9"
   }
 }
