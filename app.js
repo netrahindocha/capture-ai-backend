@@ -11,7 +11,7 @@ const authMiddleware = require("./src/middlewares/authMiddleware");
 // Import routes and configs
 const transcribeRoutes = require("./src/routes/transcribe");
 const authRoutes = require("./src/routes/auth"); // New auth routes
-require("./src/configs/bak.passport"); // Passport configuration
+require("./src/configs/passport"); // Passport configuration
 
 const app = express();
 
