@@ -6,8 +6,43 @@ const router = express.Router();
 // MongoDB User Model:
 const EmailUser = require("../models/EmailUser");
 
+// MongoDB Email Verification Model:
+const EmailVerification = require("../models/EmailVerification");
+
+// Email Handler
+const nodemailer = require("nodemailer");
+
+// Unique String (UUID version 4)
+const { v4: uuidv4 } = require("uuid");
+
+// ENV variables
+require("dotenv").config();
+
 // Password handler:
 const bcrypt = require("bcrypt");
+const path = require("path");
+
+// Nodemailer Transporter
+let transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    type: "OAuth2",
+    user: process.env.AUTH_EMAIL,
+    clientId: process.env.AUTH_CLIENT_ID,
+    clientSecret: process.env.AUTH_CLIENT_SECRET,
+    refreshToken: process.env.AUTH_REFRESH_TOKEN,
+  },
+});
+
+// Testing Success
+transporter.verify((error, success) => {
+  if (error) {
+    console.log(error);
+  } else {
+    console.log("Ready for messages");
+    console.log(success);
+  }
+});
 
 // Initiate Google login
 router.get(
@@ -39,7 +74,7 @@ router.post("/signup", (req, res) => {
       status: "FAILED",
       message: "Empty input fields",
     });
-  } else if (!/^[a-zA-Z]*$/.test(name)) {
+  } else if (!/^[a-zA-Z ]*$/.test(name)) {
     res.json({
       status: "FAILED",
       message: "Invalid name",
@@ -76,16 +111,14 @@ router.post("/signup", (req, res) => {
                 email,
                 password: hashedPassword,
                 avatar,
+                verified: false,
               });
 
               newEmailUser
                 .save()
                 .then((result) => {
-                  res.json({
-                    status: "SUCCESS",
-                    message: "Signup Successful!",
-                    data: result,
-                  });
+                  // Handle account verification
+                  sendVerificationEmail(result, res);
                 })
                 .catch((err) => {
                   res.json({
@@ -112,6 +145,178 @@ router.post("/signup", (req, res) => {
   }
 });
 
+// Send verification email
+const sendVerificationEmail = ({ _id, email, name }, res) => {
+  // url to be used in the email
+  const currentUrl = "http://localhost:5000/";
+
+  // Create unique string for email verification
+  const verifyString = uuidv4() + _id;
+
+  // Mail options
+  const mailOptions = {
+    from: process.env.AUTH_EMAIL,
+    to: email,
+    subject: "Verify Your Email",
+    html: `<h4>Hello ${name}</h4><p>Verify your email address to complete the signup into your account.</p><p>Here is the link: <a href=${
+      currentUrl + "auth/verify/" + _id + "/" + verifyString
+    }>here</a> to proceed.</p>`,
+  };
+
+  // Hash the verifyString
+  const saltRounds = 10;
+  bcrypt
+    .hash(verifyString, saltRounds)
+    .then((hashedVerifyString) => {
+      // Set values in emailVerification collection
+      const newVerification = new EmailVerification({
+        userId: _id,
+        userEmail: email,
+        userName: name,
+        verifyString: hashedVerifyString,
+        createdAt: Date.now(),
+        expiresAt: Date.now() + 21600000,
+      });
+      newVerification
+        .save()
+        .then(() => {
+          transporter
+            .sendMail(mailOptions)
+            .then(() => {
+              // Email sent and verification record saved
+              res.json({
+                status: "PENDING",
+                message: "Verification email sent!",
+              });
+            })
+            .catch((error) => {
+              console.log(error);
+              res.json({
+                status: "FAILED",
+                message: "Verification email failed",
+              });
+            });
+        })
+        .catch((error) => {
+          console.log(error);
+          res.json({
+            status: "FAILED",
+            message: "Couldn't save verification email data!",
+          });
+        });
+    })
+    .catch(() => {
+      res.json({
+        status: "FAILED",
+        message: "An error occurred while hashing email data",
+      });
+    });
+};
+
+// Verify email
+router.get("/verify/:userId/:verifyString", (req, res) => {
+  let { userId, verifyString } = req.params;
+
+  EmailVerification.find({ userId })
+    .then((result) => {
+      if (result.length > 0) {
+        // User verification record exists so we proceed
+        const { expiresAt } = result[0];
+
+        const hashedVerifyString = result[0].verifyString;
+
+        // Checking for expired verifyString
+        if (expiresAt < Date.now()) {
+          // Record has expired so we delete it
+          EmailVerification.deleteOne({ userId })
+            .then((result) => {
+              EmailUser.deleteOne({ _id: userId })
+                .then(() => {
+                  let message = "Link has expired. Please sign up again.";
+                  res.redirect(`/auth/verified/error=true&message=${message}`);
+                })
+                .catch((error) => {
+                  let message =
+                    "Clearing user with expired unique verify string failed";
+                  res.redirect(`/auth/verified/error=true&message=${message}`);
+                });
+            })
+            .catch((error) => {
+              console.log(error);
+              let message =
+                "An error occurred while clearing expired user verification record";
+              res.redirect(`/auth/verified/error=true&message=${message}`);
+            });
+        } else {
+          // Valid record exists so we validate the verify user string
+
+          // First compare the hashed unique verify string
+          bcrypt
+            .compare(verifyString, hashedVerifyString)
+            .then((result) => {
+              if (result) {
+                // Strings match
+
+                EmailUser.updateOne({ _id: userId }, { verified: true })
+                  .then(() => {
+                    console.log("userId: ", userId);
+                    EmailVerification.deleteOne({ userId })
+                      .then(() => {
+                        res.json({
+                          status: "SENDING FILE",
+                        });
+                      })
+                      .catch((error) => {
+                        console.log(error);
+                        let message =
+                          "An error occurred while finalizing successful verification.";
+                        res.redirect(
+                          `/auth/verified/error=true&message=${message}`
+                        );
+                      });
+                  })
+                  .catch((error) => {
+                    console.log(error);
+                    let message =
+                      "An error occurred while updating user record to show verified.";
+                    res.redirect(
+                      `/auth/verified/error=true&message=${message}`
+                    );
+                  });
+              } else {
+                // Existing record but incorrect verification details passed.
+                let message =
+                  "Invalid verification details passed. Check your inbox.";
+                res.redirect(`/auth/verified/error=true&message=${message}`);
+              }
+            })
+            .catch((error) => {
+              let message = "An error occurred while comparing unique strings.";
+              res.redirect(`/auth/verified/error=true&message=${message}`);
+            });
+        }
+      } else {
+        // User verification record doesn't exist
+        let message =
+          "Account record doesn't exist or has been verified already. Please signup or login.";
+        res.redirect(`/auth/verified/error=true&message=${message}`);
+      }
+    })
+    .catch((error) => {
+      console.log(error);
+      let message =
+        "An error occurred while checking for existing user verification record";
+      res.redirect(`/auth/verified/error=true&message=${message}`);
+    });
+});
+
+// Verified page route
+router.get("/verified", (req, res) => {
+  res.json({
+    status: "SENDING FILE",
+  });
+});
+
 // Login route
 router.post("/login", (req, res) => {
   let { email, password } = req.body;
@@ -130,29 +335,37 @@ router.post("/login", (req, res) => {
         if (data.length) {
           // User exists
 
-          const hashedPassword = data[0].password;
-          bcrypt
-            .compare(password, hashedPassword)
-            .then((result) => {
-              if (result) {
-                res.json({
-                  status: "SUCCESS",
-                  message: "Login Successful!",
-                  data: data,
-                });
-              } else {
+          // Check if user is verified
+          if (!data[0].verified) {
+            res.json({
+              status: "FAILED",
+              message: "Email hasn't been verified yet. Check your inbox.",
+            });
+          } else {
+            const hashedPassword = data[0].password;
+            bcrypt
+              .compare(password, hashedPassword)
+              .then((result) => {
+                if (result) {
+                  res.json({
+                    status: "SUCCESS",
+                    message: "Login Successful!",
+                    data: data,
+                  });
+                } else {
+                  res.json({
+                    status: "FAILED",
+                    message: "Incorrect credentials. Try Again!",
+                  });
+                }
+              })
+              .catch((err) => {
                 res.json({
                   status: "FAILED",
-                  message: "Incorrect credentials. Try Again!",
+                  message: "An error occurred while comparing passwords",
                 });
-              }
-            })
-            .catch((err) => {
-              res.json({
-                status: "FAILED",
-                message: "An error occurred while comparing passwords",
               });
-            });
+          }
         } else {
           res.json({
             status: "FAILED",
