@@ -56,9 +56,9 @@ app.post("/api/summarize", async (req, res) => {
   }
 });
 
-app.get("/dashboard", authMiddleware, (req, res) => {
+app.get("/", authMiddleware, (req, res) => {
   // Send user data as a response
-  res.json({ message: `Welcome, ${req.user.name}`, user: req.user });
+  res.json({ user: req.user });
 });
 
 // Start the server
