@@ -43,7 +43,7 @@ mongoose
 
 // Routes
 app.use("/api", transcribeRoutes); // Existing transcribe routes
-app.use("/auth", authRoutes); // Authentication routes (e.g., Google OAuth)
+app.use("/api/auth", authRoutes); // Authentication routes (e.g., Google OAuth)
 
 // Summarization route
 app.post("/api/summarize", async (req, res) => {

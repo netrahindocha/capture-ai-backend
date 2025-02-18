@@ -63,18 +63,23 @@ router.get(
 // Signup route
 
 router.post("/signup", (req, res) => {
-  let { name, email, password, avatar } = req.body;
-  name = name.trim();
+  let { fullName, email, password, avatar } = req.body;
+  fullName = fullName.trim();
   email = email.trim();
   password = password.trim();
   avatar = avatar.trim();
+  console.log({
+    fullName: fullName,
+    email: email,
+    password: password,
+  });
 
-  if (name == "" || email == "" || password == "") {
+  if (fullName == "" || email == "" || password == "") {
     res.json({
       status: "FAILED",
       message: "Empty input fields",
     });
-  } else if (!/^[a-zA-Z ]*$/.test(name)) {
+  } else if (!/^[a-zA-Z ]*$/.test(fullName)) {
     res.json({
       status: "FAILED",
       message: "Invalid name",
@@ -107,7 +112,7 @@ router.post("/signup", (req, res) => {
             .hash(password, saltRounds)
             .then((hashedPassword) => {
               const newEmailUser = new EmailUser({
-                name,
+                fullName,
                 email,
                 password: hashedPassword,
                 avatar,
@@ -146,9 +151,9 @@ router.post("/signup", (req, res) => {
 });
 
 // Send verification email
-const sendVerificationEmail = ({ _id, email, name }, res) => {
+const sendVerificationEmail = ({ _id, email, fullName }, res) => {
   // url to be used in the email
-  const currentUrl = "http://localhost:5000/";
+  const currentUrl = "http://localhost:5000/api/";
 
   // Create unique string for email verification
   const verifyString = uuidv4() + _id;
@@ -158,7 +163,7 @@ const sendVerificationEmail = ({ _id, email, name }, res) => {
     from: process.env.AUTH_EMAIL,
     to: email,
     subject: "Verify Your Email",
-    html: `<h4>Hello ${name}</h4><p>Verify your email address to complete the signup into your account.</p><p>Here is the link: <a href=${
+    html: `<h4>Hello ${fullName}</h4><p>Verify your email address to complete the signup into your account.</p><p>Here is the link: <a href=${
       currentUrl + "auth/verify/" + _id + "/" + verifyString
     }>here</a> to proceed.</p>`,
   };
@@ -172,7 +177,7 @@ const sendVerificationEmail = ({ _id, email, name }, res) => {
       const newVerification = new EmailVerification({
         userId: _id,
         userEmail: email,
-        userName: name,
+        userName: fullName,
         verifyString: hashedVerifyString,
         createdAt: Date.now(),
         expiresAt: Date.now() + 21600000,
@@ -271,7 +276,7 @@ router.get("/verify/:userId/:verifyString", (req, res) => {
                         let message =
                           "An error occurred while finalizing successful verification.";
                         res.redirect(
-                          `/auth/verified/error=true&message=${message}`
+                          `/api/auth/verified/error=true&message=${message}`
                         );
                       });
                   })
