@@ -56,7 +56,7 @@ router.get(
   passport.authenticate("google", { failureRedirect: "/login" }),
   (req, res) => {
     // Redirect the user after successful login
-    res.redirect("http://localhost:3000"); // Adjust to your frontend URL
+    res.redirect(process.env.FRONTEND_BASE_URL); // Adjust to your frontend URL
   }
 );
 
@@ -153,7 +153,7 @@ router.post("/signup", (req, res) => {
 // Send verification email
 const sendVerificationEmail = ({ _id, email, fullName }, res) => {
   // url to be used in the email
-  const currentUrl = "http://localhost:5000/api/";
+  const currentUrl = process.env.BACKEND_BASE_URL;
 
   // Create unique string for email verification
   const verifyString = uuidv4() + _id;
