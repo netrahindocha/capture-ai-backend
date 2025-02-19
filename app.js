@@ -15,8 +15,17 @@ require("./src/configs/passport"); // Passport configuration
 
 const app = express();
 
-// Middleware
-app.use(cors({ origin: process.env.FRONTEND_BASE_URL, credentials: true })); // Enable CORS for frontend
+// app.use(cors({ origin: "*" })); // Enable CORS for frontend
+
+app.use(
+  cors({
+    origin: [process.env.FRONTEND_BASE_URL, "http://localhost:3000"], // Allow both frontend URLs
+    credentials: true, // Allow cookies and sessions
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"], // Allow all necessary methods
+    allowedHeaders: ["Content-Type", "Authorization"], // Allow headers required for authentication
+  })
+);
+
 app.use(express.json()); // Parse JSON requests
 
 // Session setup
