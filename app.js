@@ -25,6 +25,11 @@ app.use(
     secret: process.env.SESSION_SECRET, // Keep this secret safe!
     resave: false,
     saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // Use secure cookies in production
+      sameSite: "None", // Allow cross-origin cookies
+    },
   })
 );
 
