@@ -19,7 +19,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: [process.env.FRONTEND_BASE_URL, "http://localhost:3000"], // Allow both frontend URLs
+    origin: [process.env.FRONTEND_BASE_URL], // Allow both frontend URLs
     credentials: true, // Allow cookies and sessions
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"], // Allow all necessary methods
     allowedHeaders: ["Content-Type", "Authorization"], // Allow headers required for authentication
@@ -28,15 +28,19 @@ app.use(
 
 app.use(express.json()); // Parse JSON requests
 
+app.set("trust proxy", 1); // Trust Netlify
+
 // Session setup
 app.use(
   session({
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
+    proxy: true,
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     },
   })
 );
@@ -44,6 +48,12 @@ app.use(
 // Initialize Passport.js
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Debugging
+app.get("/api/debug-session", (req, res) => {
+  console.log("Session Data:", req.session);
+  res.json({ session: req.session, user: req.user });
+});
 
 // MongoDB connection
 mongoose
