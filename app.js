@@ -49,12 +49,6 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Debugging
-app.get("/api/debug-session", (req, res) => {
-  console.log("Session Data:", req.session);
-  res.json({ session: req.session, user: req.user });
-});
-
 // MongoDB connection
 mongoose
   .connect(process.env.MONGO_URI, {
