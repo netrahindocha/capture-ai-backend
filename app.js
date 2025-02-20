@@ -31,13 +31,12 @@ app.use(express.json()); // Parse JSON requests
 // Session setup
 app.use(
   session({
-    secret: process.env.SESSION_SECRET, // Keep this secret safe!
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // Use secure cookies in production
-      sameSite: "None", // Allow cross-origin cookies
+      secure: process.env.NODE_ENV === "production",
     },
   })
 );
@@ -72,7 +71,8 @@ app.post("/api/summarize", async (req, res) => {
 
 app.get("/", authMiddleware, (req, res) => {
   // Send user data as a response
-  res.json({ user: req.user });
+  // res.json({ message: `Welcome, ${req.user.name}`, user: req.user });
+  res.redirect(`${process.env.FRONTEND_BASE_URL}/recording`);
 });
 
 // Start the server

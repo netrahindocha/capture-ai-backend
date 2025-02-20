@@ -38,9 +38,6 @@ let transporter = nodemailer.createTransport({
 transporter.verify((error, success) => {
   if (error) {
     console.log(error);
-  } else {
-    console.log("Ready for messages");
-    console.log(success);
   }
 });
 
@@ -53,7 +50,10 @@ router.get(
 // Google OAuth callback
 router.get(
   "/google/callback",
-  passport.authenticate("google", { failureRedirect: "/login" }),
+  passport.authenticate("google", {
+    successRedirect: "/",
+    failureRedirect: "/login",
+  }),
   (req, res) => {
     // Redirect the user after successful login
     res.redirect(process.env.FRONTEND_BASE_URL); // Adjust to your frontend URL
@@ -318,7 +318,7 @@ router.get("/verify/:userId/:verifyString", (req, res) => {
 // Verified page route
 router.get("/verified", (req, res) => {
   res.json({
-    status: "SENDING FILE",
+    status: "Verification successful !",
   });
 });
 
