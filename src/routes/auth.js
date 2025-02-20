@@ -56,7 +56,7 @@ router.get(
   }),
   (req, res) => {
     // Redirect the user after successful login
-    res.redirect(process.env.FRONTEND_BASE_URL); // Adjust to your frontend URL
+    res.redirect(`${process.env.FRONTEND_BASE_URL}/recording`); // Adjust to your frontend URL
   }
 );
 
